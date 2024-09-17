@@ -655,6 +655,29 @@ func extractContextLogFields(pctx *goproxy.ProxyCtx, sctx *SmokescreenContext) l
 	return fields
 }
 
+var vpceMap = initVPCEMap()
+
+// TODO(xwen-figma): pass in the environment variables from the k8s configs and add other endpoints.
+func initVPCEMap() map[string]string {
+	return map[string]string{
+		"agent-http-intake.logs.datadoghq.com": os.Getenv("DD_VPCE_DNS_LOGS_AGENT"),
+		// Add other endpoints as needed
+	}
+}
+
+func remapHost(destination hostport.HostPort, sctx *SmokescreenContext) {
+	for originalHost, vpceHost := range vpceMap {
+		if strings.Contains(destination.Host, originalHost) {
+			if vpceMap[originalHost] != "" {
+				sctx.logger.Infof("Remapping %s to %s", destination.Host, vpceMap[originalHost])
+				destination.Host = vpceHost
+			} else {
+				sctx.logger.Warnf("DD privatelink environment variable for: %s is not set, cannot remap", originalHost)
+			}
+		}
+	}
+}
+
 func handleConnect(config *Config, pctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string, error) {
 	sctx := pctx.UserData.(*SmokescreenContext)
 
@@ -663,6 +686,12 @@ func handleConnect(config *Config, pctx *goproxy.ProxyCtx) (*goproxy.ConnectActi
 	if err != nil {
 		pctx.Error = denyError{err}
 		return nil, "", pctx.Error
+	}
+
+	// Remap host to VPC endpoint of PrivateLink if necessary
+	if config.IsVPCEndpointRemappingEnabled != nil && config.IsVPCEndpointRemappingEnabled() {
+		sctx.logger.Infof("VPC endpoint remapping is enabled")
+		remapHost(destination, sctx)
 	}
 
 	// checkIfRequestShouldBeProxied can return an error if either the resolved address is disallowed,
