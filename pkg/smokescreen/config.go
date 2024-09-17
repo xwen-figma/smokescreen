@@ -102,6 +102,9 @@ type Config struct {
 	PostDecisionRequestHandler func(*http.Request) error
 	// MitmCa is used to provide a custom CA for MITM
 	MitmTLSConfig func(host string, ctx *goproxy.ProxyCtx) (*tls.Config, error)
+
+	// IsVPCEndpointRemappingEnabled is a function that returns a boolean indicating whether to remap the original host to the privatelink VPC endpoint.
+	IsVPCEndpointRemappingEnabled func() bool
 }
 
 type missingRoleError struct {
