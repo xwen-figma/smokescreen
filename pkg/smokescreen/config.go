@@ -108,8 +108,24 @@ type Config struct {
 	// MitmCa is used to provide a custom CA for MITM
 	MitmTLSConfig func(host string, ctx *goproxy.ProxyCtx) (*tls.Config, error)
 
-	// IsVPCEndpointRemappingEnabled is a function that returns a boolean indicating whether to remap the original host to the privatelink VPC endpoint.
-	IsVPCEndpointRemappingEnabled func() bool
+	// HostRemapConfig configures any host remapping that should be done by the proxy.
+	HostRemapConfig *hostRemapConfig
+}
+
+// hostRemapConfig configures host remapping settings.
+type hostRemapConfig struct {
+	// IsEnabled returns true if host remapping is enabled.
+	IsEnabled func() bool
+	// Mappings is a map of the original hostnames to their remapped values.
+	Mappings map[string]string
+}
+
+// NewHostRemapConfig creates a new hostRemapConfig with default values.
+func NewHostRemapConfig() hostRemapConfig {
+	return hostRemapConfig{
+		IsEnabled: func() bool { return false },
+		Mappings:  make(map[string]string),
+	}
 }
 
 type missingRoleError struct {

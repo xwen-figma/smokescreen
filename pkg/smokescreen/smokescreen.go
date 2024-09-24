@@ -655,24 +655,17 @@ func extractContextLogFields(pctx *goproxy.ProxyCtx, sctx *SmokescreenContext) l
 	return fields
 }
 
-var vpceMap = initVPCEMap()
-
-// TODO(xwen-figma): pass in the environment variables from the k8s configs and add other endpoints.
-func initVPCEMap() map[string]string {
-	return map[string]string{
-		"agent-http-intake.logs.datadoghq.com": os.Getenv("DD_VPCE_DNS_LOGS_AGENT"),
-		// Add other endpoints as needed
+func remapHost(config *Config, destination *hostport.HostPort, sctx *SmokescreenContext) {
+	if config.HostRemapConfig == nil {
+		return
 	}
-}
-
-func remapHost(destination hostport.HostPort, sctx *SmokescreenContext) {
-	for originalHost, vpceHost := range vpceMap {
+	for originalHost, newHost := range config.HostRemapConfig.Mappings {
 		if strings.Contains(destination.Host, originalHost) {
-			if vpceMap[originalHost] != "" {
-				sctx.logger.Infof("Remapping %s to %s", destination.Host, vpceMap[originalHost])
-				destination.Host = vpceHost
+			if newHost != "" {
+				sctx.logger.Infof("Remapping the original host: %s to new host: %s", destination.Host, newHost)
+				destination.Host = newHost
 			} else {
-				sctx.logger.Warnf("DD privatelink environment variable for: %s is not set, cannot remap", originalHost)
+				sctx.logger.Debugf("Remapping value for: %s is not set, no remap", originalHost)
 			}
 		}
 	}
@@ -688,10 +681,9 @@ func handleConnect(config *Config, pctx *goproxy.ProxyCtx) (*goproxy.ConnectActi
 		return nil, "", pctx.Error
 	}
 
-	// Remap host to VPC endpoint of PrivateLink if necessary
-	if config.IsVPCEndpointRemappingEnabled != nil && config.IsVPCEndpointRemappingEnabled() {
-		sctx.logger.Infof("VPC endpoint remapping is enabled")
-		remapHost(destination, sctx)
+	if config.HostRemapConfig != nil && config.HostRemapConfig.IsEnabled != nil && config.HostRemapConfig.IsEnabled() {
+		sctx.logger.Infof("Host remapping is enabled")
+		remapHost(config, &destination, sctx)
 	}
 
 	// checkIfRequestShouldBeProxied can return an error if either the resolved address is disallowed,
