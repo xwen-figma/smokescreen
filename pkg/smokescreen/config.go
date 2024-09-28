@@ -114,17 +114,37 @@ type Config struct {
 
 // hostRemapConfig configures host remapping settings.
 type hostRemapConfig struct {
-	// IsEnabled returns true if host remapping is enabled.
+	// IsEnabled returns true if global host remapping is enabled.
 	IsEnabled func() bool
 	// Mappings is a map of the original hostnames to their remapped values.
-	Mappings map[string]string
+	Mappings map[string]HostRemapEntry
 }
 
 // NewHostRemapConfig creates a new hostRemapConfig with default values.
 func NewHostRemapConfig() hostRemapConfig {
 	return hostRemapConfig{
 		IsEnabled: func() bool { return false },
-		Mappings:  make(map[string]string),
+		Mappings:  make(map[string]HostRemapEntry),
+	}
+}
+
+// HostRemapEntry represents a single host remapping entry.
+type HostRemapEntry struct {
+	NewHost string
+	// Enabled returns true if host remapping is enabled for this entry.
+	// For remapping to be enabled, both the global host remapping and specific entry's host remapping must be enabled.
+	Enabled func() bool
+}
+
+// NewHostRemapEntry creates a new HostRemapEntry with a default value for enabled.
+// If no function is provided, it defaults to disabled.
+func NewHostRemapEntry(newHost string, enabled func() bool) HostRemapEntry {
+	if enabled == nil {
+		enabled = func() bool { return false }
+	}
+	return HostRemapEntry{
+		NewHost: newHost,
+		Enabled: enabled,
 	}
 }
 
