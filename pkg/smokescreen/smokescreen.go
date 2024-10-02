@@ -661,17 +661,18 @@ func remapHost(config *Config, destination *hostport.HostPort, sctx *Smokescreen
 	}
 	// TODO(xwen-figma): reduce log verbosity after testing.
 	for originalHost, newHostEntry := range config.HostRemapConfig.Mappings {
-		if newHostEntry.Enabled == nil {
+		if newHostEntry.enabled == nil {
 			sctx.logger.Warnf("Enabled function is nil for: %s, remapping is disabled", originalHost)
 			continue
 		}
-		if newHostEntry.NewHost == "" || !newHostEntry.Enabled() {
+		if newHostEntry.newHost == "" || !newHostEntry.enabled() {
 			sctx.logger.Infof("Remapping is disabled for: %s", originalHost)
 			continue
 		}
 		if strings.Contains(destination.Host, originalHost) {
-			sctx.logger.Infof("Remapping the original host: %s to new host: %s", destination.Host, newHostEntry.NewHost)
-			destination.Host = newHostEntry.NewHost
+			sctx.logger.Infof("Remapping the original host: %s to new host: %s", destination.Host, newHostEntry.newHost)
+			sctx.cfg.MetricsClient.Incr("remap.total", 1)
+			destination.Host = newHostEntry.newHost
 		}
 	}
 }
