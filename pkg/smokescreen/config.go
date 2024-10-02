@@ -125,10 +125,10 @@ func NewHostRemapConfig() *hostRemapConfig {
 
 // HostRemapEntry represents a single host remapping entry.
 type HostRemapEntry struct {
-	newHost string
+	NewHost string
 	// enabled returns true if host remapping is enabled for this entry.
 	// For remapping to be enabled, both the global host remapping and specific entry's host remapping must be enabled.
-	enabled func() bool
+	Enabled func() bool
 }
 
 // NewHostRemapEntry creates a new HostRemapEntry with a default value for enabled.
@@ -138,8 +138,8 @@ func NewHostRemapEntry(newHost string, enabled func() bool) HostRemapEntry {
 		enabled = func() bool { return false }
 	}
 	return HostRemapEntry{
-		newHost: newHost,
-		enabled: enabled,
+		NewHost: newHost,
+		Enabled: enabled,
 	}
 }
 
