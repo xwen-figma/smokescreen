@@ -37,6 +37,9 @@ var metrics = []string{
 	"resolver.deny.user_configured",
 	"resolver.lookup_time", // DNS lookup time in ms, not tagged
 	"resolver.errors_total",
+
+	// Host remapping statistics
+	"remap.total",
 }
 
 type MetricsClientInterface interface {
