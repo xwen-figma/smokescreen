@@ -22,6 +22,7 @@ import (
 	"github.com/stripe/goproxy"
 	acl "github.com/stripe/smokescreen/pkg/smokescreen/acl/v1"
 	"github.com/stripe/smokescreen/pkg/smokescreen/conntrack"
+	"github.com/stripe/smokescreen/pkg/smokescreen/hostport"
 	"github.com/stripe/smokescreen/pkg/smokescreen/metrics"
 )
 
@@ -102,45 +103,8 @@ type Config struct {
 	PostDecisionRequestHandler func(*http.Request) error
 	// MitmCa is used to provide a custom CA for MITM
 	MitmTLSConfig func(host string, ctx *goproxy.ProxyCtx) (*tls.Config, error)
-
-	// HostRemapConfig configures any host remapping that should be done by the proxy.
-	HostRemapConfig *hostRemapConfig
-}
-
-// hostRemapConfig configures host remapping settings.
-type hostRemapConfig struct {
-	// IsEnabled returns true if global host remapping is enabled.
-	IsEnabled func() bool
-	// Mappings is a map of the original hostnames to their remapped values.
-	Mappings map[string]HostRemapEntry
-}
-
-// NewHostRemapConfig creates a new hostRemapConfig with default values.
-func NewHostRemapConfig() *hostRemapConfig {
-	return &hostRemapConfig{
-		IsEnabled: func() bool { return false },
-		Mappings:  make(map[string]HostRemapEntry),
-	}
-}
-
-// HostRemapEntry represents a single host remapping entry.
-type HostRemapEntry struct {
-	NewHost string
-	// enabled returns true if host remapping is enabled for this entry.
-	// For remapping to be enabled, both the global host remapping and specific entry's host remapping must be enabled.
-	Enabled func() bool
-}
-
-// NewHostRemapEntry creates a new HostRemapEntry with a default value for enabled.
-// If no function is provided, it defaults to disabled.
-func NewHostRemapEntry(newHost string, enabled func() bool) HostRemapEntry {
-	if enabled == nil {
-		enabled = func() bool { return false }
-	}
-	return HostRemapEntry{
-		NewHost: newHost,
-		Enabled: enabled,
-	}
+	// MutateDestinationHostPortHandler allows users to provide custom logic for mutating the destination host port during handleConnect.
+	MutateDestinationHostPortHandler func(hp *hostport.HostPort) error
 }
 
 type missingRoleError struct {
