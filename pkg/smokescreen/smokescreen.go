@@ -655,28 +655,6 @@ func extractContextLogFields(pctx *goproxy.ProxyCtx, sctx *SmokescreenContext) l
 	return fields
 }
 
-func remapHost(config *Config, destination *hostport.HostPort, sctx *SmokescreenContext) {
-	if config.HostRemapConfig == nil {
-		return
-	}
-	// TODO(xwen-figma): reduce log verbosity after testing.
-	for originalHost, newHostEntry := range config.HostRemapConfig.Mappings {
-		if newHostEntry.Enabled == nil {
-			sctx.logger.Warnf("Enabled function is nil for: %s, remapping is disabled", originalHost)
-			continue
-		}
-		if newHostEntry.NewHost == "" || !newHostEntry.Enabled() {
-			sctx.logger.Infof("Remapping is disabled for: %s", originalHost)
-			continue
-		}
-		if strings.Contains(destination.Host, originalHost) {
-			sctx.logger.Infof("Remapping the original host: %s to new host: %s", destination.Host, newHostEntry.NewHost)
-			sctx.cfg.MetricsClient.Incr("remap.total", 1)
-			destination.Host = newHostEntry.NewHost
-		}
-	}
-}
-
 func handleConnect(config *Config, pctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string, error) {
 	sctx := pctx.UserData.(*SmokescreenContext)
 
@@ -687,9 +665,13 @@ func handleConnect(config *Config, pctx *goproxy.ProxyCtx) (*goproxy.ConnectActi
 		return nil, "", pctx.Error
 	}
 
-	if config.HostRemapConfig != nil && config.HostRemapConfig.IsEnabled != nil && config.HostRemapConfig.IsEnabled() {
-		sctx.logger.Infof("Host remapping is enabled")
-		remapHost(config, &destination, sctx)
+	// Mutate the destination hostport if custom logic provided.
+	if config.MutateDestinationHostPortHandler != nil {
+		sctx.logger.Infof("Trying to mutate hostport for %s", destination.String())
+		if err = config.MutateDestinationHostPortHandler(&destination); err != nil {
+			pctx.Error = errors.New("mutating hostport callback failed")
+			return nil, "", pctx.Error
+		}
 	}
 
 	// checkIfRequestShouldBeProxied can return an error if either the resolved address is disallowed,
