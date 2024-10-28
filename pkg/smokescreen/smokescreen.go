@@ -374,7 +374,7 @@ func rejectResponse(pctx *goproxy.ProxyCtx, err error) *http.Response {
 		} else {
 			status = "Bad gateway"
 			code = http.StatusBadGateway
-			msg = "Failed to connect to remote host: " + e.Error()
+			msg = "Failed to connect to remote host: " + err.Error()
 		}
 	} else if e, ok := err.(denyError); ok {
 		status = "Request rejected by proxy"
@@ -667,7 +667,6 @@ func handleConnect(config *Config, pctx *goproxy.ProxyCtx) (*goproxy.ConnectActi
 
 	// Mutate the destination hostport if custom logic provided.
 	if config.MutateDestinationHostPortHandler != nil {
-		sctx.logger.Infof("Trying to mutate hostport for %s", destination.String())
 		if err = config.MutateDestinationHostPortHandler(&destination); err != nil {
 			pctx.Error = errors.New("mutating hostport callback failed")
 			return nil, "", pctx.Error
